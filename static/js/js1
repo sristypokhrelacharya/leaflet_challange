@@ -1,0 +1,79 @@
+const url = 'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_day.geojson'
+function createMap(earthquakes) {
+
+    let map = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+      });
+
+      let myMap = L.map("map", {
+        center: [39.73, -104.99],
+        zoom: 5,
+        layers: [map, earthquakes]
+      })
+
+      let legend= L.control({
+        position: "bottomright"
+      });
+
+      legend.onAdd = function() {
+        let div = L.DomUtil.create("div", "legend");
+        div.innerHTML += '<i style="background: #00cc00"></i><span> -10 - 10 </span><br>';
+        div.innerHTML += '<i style="background: #99ff66"></i><span> 10 - 30 </span><br>';
+        div.innerHTML += '<i style="background: #ffff00"></i><span> 30 - 50 </span><br>';
+        div.innerHTML += '<i style="background: #ff9900"></i><span> 50 - 70 </span><br>';
+        div.innerHTML += '<i style="background: #ff0066"></i><span> 70 - 90 </span><br>';
+        div.innerHTML += '<i style="background: #9900cc"></i><span> 90+ </span><br>';
+
+        return div;
+      }
+      legend.addTo(myMap);
+    }
+
+    d3.json(url).then(function (data) {
+        createMarkers(data.features);
+    });
+
+    function markerSize(magnitude) {
+        return magnitude *5
+    }
+
+    function depthColor(depth) {
+        switch (true) {
+            case depth > 90:
+                return "#9900cc";
+            case depth > 70:
+                return "#ff0066";
+            case depth > 50:
+                return "#ff9900";
+            case depth > 30:
+                return "ffff00";
+            case depth > 10:
+                return "#99ff66";
+            default:
+                return "#00cc00";
+
+        };
+    };
+
+    function createMarkers(earthquakeData) {
+        function onEachFeature(feature, layer) {
+            layer.bindPopup(`<h3>${feature.properties.place}</h3><hr><p>Earthquake Magnitude: $feature.properties.mag}</p></hr><p>Depth in Kilometers: ${feature.geometry.coordinates[2]}`);
+
+        }
+
+        let earthquakes = L.geoJSON(earthquakeData, {
+            pointToLayer: function(feature, latlng) {
+                return new L.circleMarker(latlng, {
+                    radius: markerSize(feature.properties.mag),
+                    color: "black",
+                    fillColor: depthColor(feature.geometry.coordinates[2]),
+                    fillOpacity: 0.95,
+                    weight: .2,
+
+                });
+            },
+            onEachFeature: onEachFeature,
+
+        });
+        createMap(earthquakes);
+    };
